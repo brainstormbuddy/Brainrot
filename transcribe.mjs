@@ -57,6 +57,13 @@ export default async function transcribeFunction() {
 	const audios = await generateTranscriptAudio();
 	let startingTime = 0;
 
+	// Initialize SRT content and the last end time
+	let srtIndex = 1; // SRT index starts at 1
+
+	// Initialize SRT content and the last end time
+	let srtContent = '';
+	let lastEndTime = 0;
+
 	// Concatenate audio files if needed, or comment out if not used
 	concatenateAudioFiles();
 
@@ -73,17 +80,25 @@ export default async function transcribeFunction() {
 
 		// Initialize SRT content
 		let srtContent = '';
-		console.log(transcription);
 
-		// Iterate over each segment's words and create SRT entries
-		transcription.segments.forEach((segment) => {
-			segment.words.forEach((word) => {
-				const startTime = secondsToSrtTime(word.start);
-				const endTime = secondsToSrtTime(word.end);
-				srtContent += `${srtIndex}\n${startTime} --> ${endTime}\n${word.text}\n\n`;
-				srtIndex++;
-			});
-		});
+		const words = transcription.segments.flatMap((segment) => segment.words);
+		for (let j = 0; j < words.length; j++) {
+			const word = words[j];
+			const nextWord = words[j + 1];
+
+			// Set the start time to the word's start time
+			const startTime = secondsToSrtTime(word.start);
+
+			// If there's a next word, the end time is the next word's start time
+			// Otherwise, use the current word's end time
+			const endTime = nextWord
+				? secondsToSrtTime(nextWord.start)
+				: secondsToSrtTime(word.end);
+
+			// Append the formatted SRT entry to the content
+			srtContent += `${srtIndex}\n${startTime} --> ${endTime}\n${word.text}\n\n`;
+			srtIndex++;
+		}
 
 		const lines = srtContent.split('\n');
 
@@ -112,7 +127,7 @@ export default async function transcribeFunction() {
 		await writeFile(srtFileName, incrementedSrtContent, 'utf8');
 
 		const duration = await getAudioDuration(audio.audio);
-		startingTime += duration + 0.3;
+		startingTime += duration + 0.35;
 	}
 }
 

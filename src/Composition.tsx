@@ -1,16 +1,14 @@
 import { useAudioData, visualizeAudio } from '@remotion/media-utils';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
 	AbsoluteFill,
 	Audio,
 	continueRender,
 	Img,
-	random,
+	OffthreadVideo,
 	Sequence,
-	staticFile,
 	useCurrentFrame,
 	useVideoConfig,
-	Video,
 } from 'remotion';
 
 import { PaginatedSubtitles } from './Subtitles';
@@ -96,6 +94,7 @@ const SubtitleFileSchema = z.object({
 export const AudioGramSchema = z.object({
 	initialAgentName: z.string(),
 	agentDetails: AgentDetailsSchema,
+	videoFileName: z.string(),
 	durationInSeconds: z.number().positive(),
 	audioOffsetInSeconds: z.number().min(0),
 	subtitlesFileName: z.array(SubtitleFileSchema),
@@ -193,13 +192,9 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 	onlyDisplayCurrentSentence,
 	mirrorWave,
 	audioOffsetInSeconds,
+	videoFileName,
 }) => {
 	const [currentAgentName, setCurrentAgentName] = useState<string>('');
-
-	const brainrotVideo = useMemo(
-		() => staticFile(`brainrot-${Math.round(random(null) * 22)}.mp4`),
-		[]
-	);
 	const { durationInFrames, fps } = useVideoConfig();
 	const frame = useCurrentFrame();
 	const [subtitlesData, setSubtitlesData] = useState<SubtitleEntry[]>([]);
@@ -325,10 +320,10 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 							</div>
 						</div>
 						<div className="relative w-full h-[50%]">
-							<Video
+							<OffthreadVideo
 								muted
 								className=" h-full w-full object-cover"
-								src={brainrotVideo}
+								src={videoFileName}
 							/>
 							<div className="absolute flex flex-row items-center gap-2 opacity-50 z-30 bottom-6 right-6">
 								<Img

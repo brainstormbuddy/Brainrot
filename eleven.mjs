@@ -40,20 +40,23 @@ export async function generateTranscriptAudio(topic, agentA, agentB) {
 	const initialAgentName = audios[0].person;
 
 	const contextContent = `
-  import { staticFile } from 'remotion';
+import { staticFile } from 'remotion';
 
-  export const initialAgentName = '${initialAgentName}';
-  export const subtitlesFileName = [
-    ${audios
-			.map(
-				(entry, i) => `{
-      name: '${entry.person}',
-      file: staticFile('srt/${entry.person}-${i}.srt'),
-      asset: '${entry.image}',
-    }`
-			)
-			.join(',\n    ')}
-  ];
+export const initialAgentName = '${initialAgentName}';
+export const videoFileName = staticFile('brainrot-' + ${Math.floor(
+		Math.random() * 23
+	)} + '.mp4');
+export const subtitlesFileName = [
+  ${audios
+		.map(
+			(entry, i) => `{
+    name: '${entry.person}',
+    file: staticFile('srt/${entry.person}-${i}.srt'),
+    asset: '${entry.image}',
+  }`
+		)
+		.join(',\n  ')}
+];
 `;
 
 	await writeFile('src/tmp/context.tsx', contextContent, 'utf-8');
@@ -127,17 +130,33 @@ async function fetchValidImage(transcript, index, attempt = 0) {
 	const validMimeTypes = ['image/png', 'image/jpeg'];
 	for (let image of imageResponse.items) {
 		if (validMimeTypes.includes(image.mime)) {
-			return image;
+			const isViewable = await checkImageHeaders(image.link);
+			if (isViewable) {
+				return image;
+			}
 		}
 	}
 
 	return await fetchValidImage(transcript, index, attempt + 1);
 }
 
-// Example usage
-try {
-	const validImage = await fetchValidImage(transcript, i);
-	console.log('Found valid image:', validImage.link);
-} catch (error) {
-	console.error(error.message);
+async function checkImageHeaders(url) {
+	try {
+		const response = await fetch(url, { method: 'HEAD' });
+		const contentType = response.headers.get('Content-Type');
+		const contentDisposition = response.headers.get('Content-Disposition');
+
+		// Check for direct image content types and absence of attachment disposition
+		if (
+			contentType.includes('image/png') ||
+			contentType.includes('image/jpeg')
+		) {
+			if (!contentDisposition || !contentDisposition.includes('attachment')) {
+				return true; // Image is likely viewable directly in the browser
+			}
+		}
+	} catch (error) {
+		console.error('Error checking image headers:', error);
+	}
+	return false;
 }

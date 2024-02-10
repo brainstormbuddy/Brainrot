@@ -122,9 +122,6 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 	subtitlesFileName,
 	audioFileName,
 	coverImgFileName,
-	titleText,
-	titleColor,
-	subtitlesTextColor,
 	subtitlesLinePerPage,
 	waveColor,
 	waveNumberOfSamples,
@@ -164,15 +161,13 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 		`brainrot-${Math.round(random(null) * 7)}.mp4`
 	);
 
-	console.log(brainrotVideo);
-
 	return (
 		<div ref={ref}>
 			<AbsoluteFill>
 				<Sequence from={-audioOffsetInFrames}>
 					<Audio src={audioFileName} />
 					<div
-						className="relative -z-20 flex flex-col bg-black w-full h-full font-remotionFont"
+						className="relative -z-20 flex flex-col w-full h-full font-remotionFont"
 						style={{
 							fontFamily: 'IBM Plex Sans',
 						}}
@@ -204,7 +199,7 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 									lineHeight: `${subtitlesLineHeight}px`,
 									WebkitTextStroke: '4px black',
 								}}
-								className="font-remotionFont z-2 absolute text-6xl text-yellow-300 mx-24 top-24 left-0"
+								className="font-remotionFont z-2 absolute text-7xl text-white mx-24 top-24 left-0"
 							>
 								<PaginatedSubtitles
 									subtitles={subtitles.toUpperCase()}

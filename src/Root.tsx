@@ -16,13 +16,10 @@ export const RemotionRoot: React.FC = () => {
 		loadAudio();
 	}, []);
 
-	if (audioDuration === null) {
-		return <div>Loading...</div>; // Or some loading animation
-	}
 	return (
 		<>
 			<Composition
-				id="Audiogram"
+				id="Video"
 				component={AudiogramComposition}
 				fps={fps}
 				width={1080}
@@ -92,7 +89,7 @@ export const RemotionRoot: React.FC = () => {
 					waveLinesToDisplay: 15,
 					waveNumberOfSamples: '256', // This is string for Remotion controls and will be converted to a number
 					mirrorWave: true,
-					durationInSeconds: audioDuration,
+					durationInSeconds: 54,
 				}}
 				// Determine the length of the video based on the duration of the audio file
 				calculateMetadata={({ props }) => {

@@ -21,7 +21,11 @@ export async function generateTranscriptAudio() {
 				: process.env.JORDAN_PETERSON_VOICE_ID;
 
 		await generateAudio(voice_id, person, line, i);
-		audios.push({ person: person, audio: `public/voice/${person}-${i}.mp3` });
+		audios.push({
+			person: person,
+			audio: `public/voice/${person}-${i}.mp3`,
+			index: i,
+		});
 	}
 
 	return audios;

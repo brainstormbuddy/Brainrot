@@ -4,7 +4,6 @@ import {
 	AbsoluteFill,
 	Audio,
 	continueRender,
-	delayRender,
 	Img,
 	random,
 	Sequence,
@@ -91,10 +90,12 @@ const SubtitleFileSchema = z.object({
 	file: z.string().refine((s) => s.endsWith('.srt'), {
 		message: 'Subtitle file must be a .srt file',
 	}),
+	asset: z.string(),
 });
 
 export const AudioGramSchema = z.object({
-	agent_details: AgentDetailsSchema,
+	initialAgentName: z.string(),
+	agentDetails: AgentDetailsSchema,
 	durationInSeconds: z.number().positive(),
 	audioOffsetInSeconds: z.number().min(0),
 	subtitlesFileName: z.array(SubtitleFileSchema),
@@ -159,7 +160,7 @@ const AudioViz: React.FC<{
 		: frequencyDataSubset;
 
 	return (
-		<div className="audio-viz z-30">
+		<div className="transition-all audio-viz z-30">
 			{frequencesToDisplay.map((v, i) => {
 				return (
 					<div
@@ -168,6 +169,7 @@ const AudioViz: React.FC<{
 						style={{
 							backgroundColor: waveColor,
 							minWidth: '1px',
+							opacity: 0.5,
 							height: `${500 * Math.sqrt(v)}%`,
 						}}
 					/>
@@ -179,8 +181,10 @@ const AudioViz: React.FC<{
 
 export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 	subtitlesFileName,
+	agentDetails,
 	audioFileName,
 	subtitlesLinePerPage,
+	initialAgentName,
 	waveNumberOfSamples,
 	waveFreqRangeStartIndex,
 	waveLinesToDisplay,
@@ -193,7 +197,7 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 	const [currentAgentName, setCurrentAgentName] = useState<string>('');
 
 	const brainrotVideo = useMemo(
-		() => staticFile(`brainrot-${Math.round(random(null) * 7)}.mp4`),
+		() => staticFile(`brainrot-${Math.round(random(null) * 22)}.mp4`),
 		[]
 	);
 	const { durationInFrames, fps } = useVideoConfig();
@@ -202,7 +206,8 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 	const [currentSubtitle, setCurrentSubtitle] = useState<SubtitleEntry | null>(
 		null
 	);
-	const [handle, setHandle] = useState<number | null>(null);
+	const [handle] = useState<number | null>(null);
+	const [prevImageIdx, setPrevImageIdx] = useState<number>(0);
 	const ref = useRef<HTMLDivElement>(null);
 	const [currentSrtContent, setCurrentSrtContent] = useState<string>('');
 
@@ -216,6 +221,7 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 			);
 
 			if (currentSubtitle) {
+				setPrevImageIdx(currentSubtitle.srtFileIndex);
 				setCurrentSubtitle(currentSubtitle);
 				// Use the srtFileIndex to find the corresponding agent name
 				const agentInfo = subtitlesFileName[currentSubtitle.srtFileIndex];
@@ -230,9 +236,6 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 	// Fetch and parse all SRT files
 	useEffect(() => {
 		const fetchSubtitlesData = async () => {
-			// const handleId = delayRender();
-			// setHandle(handleId);
-
 			try {
 				const data = await Promise.all(
 					subtitlesFileName.map(async ({ file }, index) => {
@@ -245,8 +248,6 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 				setSubtitlesData(data.flat().sort((a, b) => a.startTime - b.startTime));
 			} catch (error) {
 				console.error('Error fetching subtitles:', error);
-			} finally {
-				// continueRender(handleId);
 			}
 		};
 
@@ -288,14 +289,24 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 				<Sequence from={-audioOffsetInFrames}>
 					<Audio src={audioFileName} />
 					<div className="relative -z-20 flex flex-col w-full h-full font-remotionFont">
-						<div className="w-full h-[50%]">
-							<div className="flex flex-row gap-24 items-end h-full p-8">
+						<div className="w-full h-[50%] relative">
+							<Img
+								src={
+									subtitlesFileName[
+										currentSubtitle?.srtFileIndex
+											? currentSubtitle.srtFileIndex
+											: prevImageIdx
+									].asset
+								}
+								className="w-full h-full"
+							/>
+							<div className="absolute bottom-2 left-2 flex flex-row gap-24 items-end h-full p-8 z-30">
 								<Img
 									width={200}
 									height={200}
-									className="rounded-full"
+									className="z-30 transition-all rounded-full"
 									src={`https://images.smart.wtf/${
-										currentAgentName || 'JOE_ROGAN'
+										currentAgentName || initialAgentName
 									}.png`}
 								/>
 
@@ -304,9 +315,7 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 										audioSrc={audioFileName}
 										mirrorWave={mirrorWave}
 										waveColor={
-											currentAgentName === 'JORDAN_PETERSON'
-												? '#0000FF'
-												: '#bc462b'
+											agentDetails[currentAgentName || initialAgentName].color
 										}
 										numberOfSamples={Number(waveNumberOfSamples)}
 										freqRangeStartIndex={waveFreqRangeStartIndex}
@@ -317,16 +326,24 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 						</div>
 						<div className="relative w-full h-[50%]">
 							<Video
-								className=" h-full w-full object-cover"
 								muted
+								className=" h-full w-full object-cover"
 								src={brainrotVideo}
 							/>
+							<div className="absolute flex flex-row items-center gap-2 opacity-50 z-30 bottom-6 right-6">
+								<Img
+									width={150}
+									height={150}
+									src="https://images.smart.wtf/smartwtf.png"
+								/>
+							</div>
+
 							<div
 								style={{
 									lineHeight: `${subtitlesLineHeight}px`,
 									WebkitTextStroke: '6px black',
 								}}
-								className="font-remotionFont z-10 absolute text-center text-[7rem] drop-shadow-2xl text-white mx-24 top-8 left-0 right-0"
+								className="font-remotionFont z-10 absolute text-center text-8xl drop-shadow-2xl text-white mx-24 top-8 left-0 right-0"
 							>
 								<PaginatedSubtitles
 									subtitles={currentSrtContent.toUpperCase()}

@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 import whisper_timestamped as whisper
+import json
 
 app = Flask(__name__)
 
@@ -9,10 +10,10 @@ def transcribe_audio():
     try:
         data = request.json
         audios = data.get('audios')
-        
+
         if not audios:
             raise ValueError("The 'audios' is not provided in the request.")
-        
+
         for audio_path in audios:
             # Load and transcribe the audio
             audio = whisper.load_audio(audio_path)

@@ -1,16 +1,7 @@
-import OpenAI from 'openai';
-import fs from 'fs';
-import dotenv from 'dotenv';
 import { generateTranscriptAudio } from './eleven.mjs';
 import getAudioDuration from './audioduration.mjs';
-dotenv.config();
 import { writeFile } from 'fs/promises';
 import concatenateAudioFiles from './concat.mjs';
-import { spawn } from 'child_process';
-
-const openai = new OpenAI({
-	apiKey: process.env.OPENAI_API_KEY,
-});
 
 const transcribeAudio = async (audios) => {
 	try {
@@ -19,7 +10,7 @@ const transcribeAudio = async (audios) => {
 			headers: {
 				'Content-Type': 'application/json',
 			},
-			body: JSON.stringify({ audios: audios }),
+			body: JSON.stringify({ audios }),
 		});
 
 		if (!response.ok) {
@@ -53,16 +44,9 @@ function secondsToSrtTime(seconds) {
 	return `${pad(hrs, 2)}:${pad(mins, 2)}:${pad(secs, 2)},${pad(millis, 3)}`;
 }
 
-export default async function transcribeFunction() {
-	const audios = await generateTranscriptAudio();
+export default async function transcribeFunction(topic, agentA, agentB) {
+	const audios = await generateTranscriptAudio(topic, agentA, agentB);
 	let startingTime = 0;
-
-	// Initialize SRT content and the last end time
-	let srtIndex = 1; // SRT index starts at 1
-
-	// Initialize SRT content and the last end time
-	let srtContent = '';
-	let lastEndTime = 0;
 
 	// Concatenate audio files if needed, or comment out if not used
 	concatenateAudioFiles();
@@ -127,8 +111,6 @@ export default async function transcribeFunction() {
 		await writeFile(srtFileName, incrementedSrtContent, 'utf8');
 
 		const duration = await getAudioDuration(audio.audio);
-		startingTime += duration + 0.35;
+		startingTime += duration + 0.2;
 	}
 }
-
-await transcribeFunction();

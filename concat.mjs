@@ -3,7 +3,7 @@ import path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 
 export default function concatenateAudioFiles() {
-	const directoryPath = 'public/audio/';
+	const directoryPath = 'public/voice/';
 	const silenceAudioFile = 'public/silence.mp3';
 
 	if (!fs.existsSync('tmp/')) {
@@ -41,5 +41,5 @@ export default function concatenateAudioFiles() {
 		.on('end', () => {
 			console.log('Finished concatenating audio files!');
 		})
-		.mergeToFile('public/concatenated.mp3', 'tmp/');
+		.mergeToFile('public/audio.mp3', 'tmp/');
 }

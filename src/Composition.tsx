@@ -132,7 +132,6 @@ const AudioViz: React.FC<{
 	audioSrc,
 }) => {
 	const frame = useCurrentFrame();
-	const { fps } = useVideoConfig();
 
 	const audioData = useAudioData(audioSrc);
 
@@ -231,8 +230,8 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 	// Fetch and parse all SRT files
 	useEffect(() => {
 		const fetchSubtitlesData = async () => {
-			const handleId = delayRender();
-			setHandle(handleId);
+			// const handleId = delayRender();
+			// setHandle(handleId);
 
 			try {
 				const data = await Promise.all(
@@ -247,7 +246,7 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 			} catch (error) {
 				console.error('Error fetching subtitles:', error);
 			} finally {
-				continueRender(handleId);
+				// continueRender(handleId);
 			}
 		};
 
@@ -325,12 +324,12 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 							<div
 								style={{
 									lineHeight: `${subtitlesLineHeight}px`,
-									WebkitTextStroke: '4px black',
+									WebkitTextStroke: '6px black',
 								}}
-								className="font-remotionFont z-10 absolute text-8xl text-white mx-24 top-8 left-0"
+								className="font-remotionFont z-10 absolute text-center text-[7rem] drop-shadow-2xl text-white mx-24 top-8 left-0 right-0"
 							>
 								<PaginatedSubtitles
-									subtitles={currentSrtContent}
+									subtitles={currentSrtContent.toUpperCase()}
 									startFrame={audioOffsetInFrames}
 									endFrame={audioOffsetInFrames + durationInFrames}
 									linesPerPage={subtitlesLinePerPage}

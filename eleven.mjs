@@ -3,7 +3,6 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import transcriptFunction from './transcript.mjs';
 import { writeFile } from 'fs/promises';
-import path from 'path';
 
 dotenv.config();
 
@@ -23,32 +22,18 @@ export async function generateTranscriptAudio(topic, agentA, agentB) {
 				? process.env.BARACK_OBAMA_VOICE_ID
 				: person === 'BEN_SHAPIRO'
 				? process.env.BEN_SHAPIRO_VOICE_ID
+				: person === 'RICK_SANCHEZ'
+				? process.env.RICK_SANCHEZ_VOICE_ID
 				: process.env.JORDAN_PETERSON_VOICE_ID;
 
-		const imageFetch = await fetch(
-			`https://www.googleapis.com/customsearch/v1?q=${encodeURI(
-				transcript[i].asset
-			)}&cx=${process.env.GOOGLE_CX}&searchType=image&key=${
-				process.env.GOOGLE_API_KEY
-			}&num=1`,
-			{
-				method: 'GET',
-				headers: { 'Content-Type': 'application/json' },
-			}
-		);
-
-		const imageResponse = await imageFetch.json();
-
-		if (!imageResponse.items || imageResponse.items.length === 0) {
-			throw new Error('Image not found');
-		}
+		const image = await fetchValidImage(transcript, i);
 
 		await generateAudio(voice_id, person, line, i);
 		audios.push({
 			person: person,
 			audio: `public/voice/${person}-${i}.mp3`,
 			index: i,
-			image: imageResponse.items[0].link,
+			image: image.link,
 		});
 	}
 
@@ -111,4 +96,48 @@ export async function generateAudio(voice_id, person, line, index) {
 		});
 		audioStream.on('error', reject);
 	});
+}
+
+async function fetchValidImage(transcript, index, attempt = 0) {
+	const maxAttempts = 5;
+	const numImages = 4;
+
+	if (attempt >= maxAttempts) {
+		return 'https://images.smart.wtf/black.png';
+	}
+
+	const imageFetch = await fetch(
+		`https://www.googleapis.com/customsearch/v1?q=${encodeURI(
+			transcript[index].asset
+		)}&cx=${process.env.GOOGLE_CX}&searchType=image&key=${
+			process.env.GOOGLE_API_KEY
+		}&num=${numImages}`,
+		{
+			method: 'GET',
+			headers: { 'Content-Type': 'application/json' },
+		}
+	);
+
+	const imageResponse = await imageFetch.json();
+
+	if (!imageResponse.items || imageResponse.items.length === 0) {
+		return await fetchValidImage(transcript, index, attempt + 1);
+	}
+
+	const validMimeTypes = ['image/png', 'image/jpeg'];
+	for (let image of imageResponse.items) {
+		if (validMimeTypes.includes(image.mime)) {
+			return image;
+		}
+	}
+
+	return await fetchValidImage(transcript, index, attempt + 1);
+}
+
+// Example usage
+try {
+	const validImage = await fetchValidImage(transcript, i);
+	console.log('Found valid image:', validImage.link);
+} catch (error) {
+	console.error(error.message);
 }

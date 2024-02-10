@@ -27,8 +27,6 @@ export const Word: React.FC<{
 		<span
 			style={{
 				display: 'inline-block',
-				opacity,
-				translate: `0 ${translateY}em`,
 			}}
 		>
 			{item.text}

@@ -59,9 +59,9 @@ export const PaginatedSubtitles: React.FC<{
 	const frame = useCurrentFrame();
 	const windowRef = useRef<HTMLDivElement>(null);
 	const zoomMeasurer = useRef<HTMLDivElement>(null);
-	const [handle] = useState(() => delayRender());
-	const [fontHandle] = useState(() => delayRender());
-	const [fontLoaded, setFontLoaded] = useState(false);
+	// const [handle] = useState(() => delayRender());
+	// const [fontHandle] = useState(() => delayRender());
+	// const [fontLoaded, setFontLoaded] = useState(false);
 	const windowedFrameSubs = useWindowedFrameSubs(subtitles, {
 		windowStart: startFrame,
 		windowEnd: endFrame,
@@ -98,9 +98,6 @@ export const PaginatedSubtitles: React.FC<{
 	}, [frame, onlyDisplayCurrentSentence, windowedFrameSubs]);
 
 	useEffect(() => {
-		if (!fontLoaded) {
-			return;
-		}
 		const zoom =
 			(zoomMeasurer.current?.getBoundingClientRect().height as number) /
 			subtitlesZoomMeasurerSize;
@@ -109,15 +106,8 @@ export const PaginatedSubtitles: React.FC<{
 			(subtitlesLineHeight * zoom);
 		const linesToOffset = Math.max(0, linesRendered - linesPerPage);
 		setLineOffset(linesToOffset);
-		continueRender(handle);
-	}, [
-		fontLoaded,
-		frame,
-		handle,
-		linesPerPage,
-		subtitlesLineHeight,
-		subtitlesZoomMeasurerSize,
-	]);
+		// continueRender(handle);
+	}, [frame, linesPerPage, subtitlesLineHeight, subtitlesZoomMeasurerSize]);
 
 	const currentFrameSentences = currentAndFollowingSentences.filter((word) => {
 		return word.start < frame;

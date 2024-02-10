@@ -7,7 +7,6 @@ import {
 	useCurrentFrame,
 	useVideoConfig,
 } from 'remotion';
-import { ensureFont } from './ensure-font';
 import { Word } from './Word';
 
 const useWindowedFrameSubs = (
@@ -74,20 +73,28 @@ export const PaginatedSubtitles: React.FC<{
 		// If we don't want to only display the current sentence, return all the words
 		if (!onlyDisplayCurrentSentence) return windowedFrameSubs;
 
-		const indexOfCurrentSentence =
-			windowedFrameSubs.findLastIndex((w, i) => {
-				const nextWord = windowedFrameSubs[i + 1];
+		const indexOfCurrentSentence = windowedFrameSubs.findIndex((w) => {
+			return w.end > frame; // Find the first subtitle that hasn't ended yet
+		});
 
-				return (
-					nextWord &&
-					(w.text.endsWith('?') ||
-						w.text.endsWith('.') ||
-						w.text.endsWith('!')) &&
-					nextWord.start < frame
-				);
-			}) + 1;
+		if (indexOfCurrentSentence === -1) {
+			return []; // No more subtitles to display
+		}
 
-		return windowedFrameSubs.slice(indexOfCurrentSentence);
+		// Optionally, find the end of the current sentence
+		const indexOfCurrentSentenceEnd = windowedFrameSubs.findIndex(
+			(w, i) =>
+				i > indexOfCurrentSentence &&
+				(w.text.endsWith('?') || w.text.endsWith('.') || w.text.endsWith('!'))
+		);
+
+		// If we found the end of the sentence, return up to that. Otherwise, return everything after the current sentence
+		return windowedFrameSubs.slice(
+			indexOfCurrentSentence,
+			indexOfCurrentSentenceEnd !== -1
+				? indexOfCurrentSentenceEnd + 1
+				: undefined
+		);
 	}, [frame, onlyDisplayCurrentSentence, windowedFrameSubs]);
 
 	useEffect(() => {
@@ -112,29 +119,12 @@ export const PaginatedSubtitles: React.FC<{
 		subtitlesZoomMeasurerSize,
 	]);
 
-	useEffect(() => {
-		ensureFont()
-			.then(() => {
-				continueRender(fontHandle);
-				setFontLoaded(true);
-			})
-			.catch((err) => {
-				cancelRender(err);
-			});
-	}, [fontHandle, fontLoaded]);
-
 	const currentFrameSentences = currentAndFollowingSentences.filter((word) => {
 		return word.start < frame;
 	});
 
 	return (
-		<div
-			style={{
-				position: 'relative',
-				overflow: 'hidden',
-				paddingBottom: '20px',
-			}}
-		>
+		<div>
 			<div
 				ref={windowRef}
 				style={{

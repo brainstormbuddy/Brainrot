@@ -19,17 +19,8 @@ export default async function transcribeFunction() {
 			prompt: 'transcribe every single individual word',
 		});
 
-		fs.writeFileSync(`public/srt/${audio.person}.srt`, String(transcription));
+		fs.writeFileSync(`public/srt/${audio.audio}.srt`, String(transcription));
 	}
-
-	const transcription = await openai.audio.transcriptions.create({
-		file: fs.createReadStream('public/audio.mp3'),
-		model: 'whisper-1',
-		response_format: 'srt',
-		prompt: 'transcribe every single individual word',
-	});
-
-	console.log(String(transcription));
-
-	fs.writeFileSync('test.srt', String(transcription));
 }
+
+await transcribeFunction();

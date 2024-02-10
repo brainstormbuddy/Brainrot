@@ -1,4 +1,5 @@
 import transcribeFunction from './transcribe.mjs';
+import { exec } from 'child_process';
 
 const topics = [
 	'The ethics of AI in autonomous vehicles',
@@ -533,7 +534,13 @@ const topics = [
 	'The potential of 5G technology to revolutionize communication and IoT',
 ];
 
-const agents = ['BARACK_OBAMA', 'BEN_SHAPIRO', 'JORDAN_PETERSON', 'JOE_ROGAN'];
+const agents = [
+	'BARACK_OBAMA',
+	'BEN_SHAPIRO',
+	'JORDAN_PETERSON',
+	'JOE_ROGAN',
+	'RICK_SANCHEZ',
+];
 
 async function main() {
 	const randomTopic = topics[Math.floor(Math.random() * topics.length)];
@@ -547,11 +554,34 @@ async function main() {
 	const agentA = agents[agentAIndex];
 	const agentB = agents[agentBIndex];
 
-	await transcribeFunction(
-		'Bidirectional encoder representations from Transformers',
-		agentA,
-		agentB
-	);
+	await transcribeFunction(randomTopic, agentA, agentB);
+
+	// run in the command line `npm run build`
+	exec('npm run build', async (error, stdout, stderr) => {
+		if (error) {
+			console.error(`exec error: ${error}`);
+			return;
+		}
+		console.log(`stdout: ${stdout}`);
+		console.error(`stderr: ${stderr}`);
+
+		try {
+			await rm(path.join('', 'public', 'srt'), {
+				recursive: true,
+				force: true,
+			});
+			await rm(path.join('', 'public', 'srt'), { recursive: true });
+			await unlink(path.join('', 'public', 'audio.mp3'));
+			await rm(path.join('', 'public', 'voice'), {
+				recursive: true,
+				force: true,
+			});
+			await rm(path.join('', 'public', 'voice'), { recursive: true });
+			await unlink(path.join('', 'src', 'tmp', 'context.tsx'));
+		} catch (err) {
+			console.error(`Error removing files: ${err}`);
+		}
+	});
 }
 
 (async () => {

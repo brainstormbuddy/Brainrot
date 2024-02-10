@@ -7,14 +7,15 @@ const openai = new OpenAI({
 
 async function main() {
 	const transcription = await openai.audio.transcriptions.create({
-		file: fs.createReadStream('joe.mp3'),
+		file: fs.createReadStream('public/audio.mp3'),
 		model: 'whisper-1',
 		response_format: 'srt',
+		prompt: 'transcribe every single individual word',
 	});
 
 	console.log(String(transcription));
 
-	fs.writeFileSync('transcription.srt', String(transcription));
+	fs.writeFileSync('test.srt', String(transcription));
 }
 
 main();

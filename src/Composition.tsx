@@ -26,6 +26,7 @@ type SubtitleEntry = {
 	endTime: number;
 	text: string;
 	srt: string;
+	srtFileIndex: number;
 };
 
 const AgentDetailsSchema = z.record(
@@ -48,7 +49,10 @@ const srtTimeToSeconds = (srtTime: string) => {
 	);
 };
 
-const parseSRT = (srtContent: string): SubtitleEntry[] => {
+const parseSRT = (
+	srtContent: string,
+	srtFileIndex: number
+): SubtitleEntry[] => {
 	// Split content into subtitle blocks
 	const blocks = srtContent.split('\n\n');
 
@@ -75,10 +79,11 @@ const parseSRT = (srtContent: string): SubtitleEntry[] => {
 				startTime,
 				endTime,
 				text: textLines,
-				srt: srtContent,
+				srt: block, // Include only this block of text
+				srtFileIndex, // Add the index of the SRT file
 			};
 		})
-		.filter((entry): entry is SubtitleEntry => entry !== null); // Remove null entries
+		.filter((entry): entry is SubtitleEntry => entry !== null);
 };
 
 const SubtitleFileSchema = z.object({
@@ -202,25 +207,26 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 	const ref = useRef<HTMLDivElement>(null);
 	const [currentSrtContent, setCurrentSrtContent] = useState<string>('');
 
+	// Determine the current subtitle and agent based on the frame
 	useEffect(() => {
 		if (subtitlesData.length > 0) {
 			const currentTime = frame / fps;
-			const currentSubtitleIndex = subtitlesData.findIndex(
+			const currentSubtitle = subtitlesData.find(
 				(subtitle) =>
 					currentTime >= subtitle.startTime && currentTime < subtitle.endTime
 			);
-			if (currentSubtitleIndex !== -1) {
-				const currentSubtitle = subtitlesData[currentSubtitleIndex];
-				setCurrentSubtitle(currentSubtitle);
 
-				// Use the index to find the corresponding agent name
-				const { name } = subtitlesFileName[currentSubtitleIndex] || {};
-				setCurrentAgentName(name);
+			if (currentSubtitle) {
+				setCurrentSubtitle(currentSubtitle);
+				// Use the srtFileIndex to find the corresponding agent name
+				const agentInfo = subtitlesFileName[currentSubtitle.srtFileIndex];
+				setCurrentAgentName(agentInfo.name);
+			} else {
+				setCurrentSubtitle(null);
+				setCurrentAgentName('');
 			}
 		}
 	}, [frame, fps, subtitlesData, subtitlesFileName]);
-
-	console.log('Current agent name:', currentAgentName);
 
 	// Fetch and parse all SRT files
 	useEffect(() => {
@@ -230,11 +236,11 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 
 			try {
 				const data = await Promise.all(
-					subtitlesFileName.map(async ({ file }) => {
-						// Destructure to get the file
+					subtitlesFileName.map(async ({ file }, index) => {
+						// Pass the index to parseSRT
 						const response = await fetch(file);
 						const text = await response.text();
-						return parseSRT(text);
+						return parseSRT(text, index);
 					})
 				);
 				setSubtitlesData(data.flat().sort((a, b) => a.startTime - b.startTime));
@@ -289,7 +295,9 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 									width={200}
 									height={200}
 									className="rounded-full"
-									src={`https://images.smart.wtf/${currentAgentName}.png`}
+									src={`https://images.smart.wtf/${
+										currentAgentName || 'JOE_ROGAN'
+									}.png`}
 								/>
 
 								<div>
@@ -297,7 +305,9 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 										audioSrc={audioFileName}
 										mirrorWave={mirrorWave}
 										waveColor={
-											currentAgentName === 'JOE_ROGAN' ? '#bc462b' : '#0000FF'
+											currentAgentName === 'JORDAN_PETERSON'
+												? '#0000FF'
+												: '#bc462b'
 										}
 										numberOfSamples={Number(waveNumberOfSamples)}
 										freqRangeStartIndex={waveFreqRangeStartIndex}
@@ -317,7 +327,7 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 									lineHeight: `${subtitlesLineHeight}px`,
 									WebkitTextStroke: '4px black',
 								}}
-								className="font-remotionFont z-10 absolute text-6xl text-white mx-24 top-8 left-0"
+								className="font-remotionFont z-10 absolute text-8xl text-white mx-24 top-8 left-0"
 							>
 								<PaginatedSubtitles
 									subtitles={currentSrtContent}

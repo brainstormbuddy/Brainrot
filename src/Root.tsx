@@ -17,20 +17,61 @@ export const RemotionRoot: React.FC = () => {
 					audioOffsetInSeconds: 0,
 					// Title settings
 					audioFileName: staticFile('audio.mp3'),
-					coverImgFileName: staticFile('cover.png'),
 					titleText: 'Back propagation',
 					titleColor: 'rgba(186, 186, 186, 0.93)',
 
 					// Subtitles settings
-					subtitlesFileName: staticFile('subtitles.srt'),
+					subtitlesFileName: [
+						{
+							name: 'JOE_ROGAN',
+							file: staticFile('srt/JOE_ROGAN-0.srt'),
+						},
+						{
+							name: 'JORDAN_PETERSON',
+							file: staticFile('srt/JORDAN_PETERSON-1.srt'),
+						},
+						{
+							name: 'JOE_ROGAN',
+							file: staticFile('srt/JOE_ROGAN-2.srt'),
+						},
+						{
+							name: 'JORDAN_PETERSON',
+							file: staticFile('srt/JOE_ROGAN-3.srt'),
+						},
+						{
+							name: 'JOE_ROGAN',
+							file: staticFile('srt/JORDAN_PETERSON-4.srt'),
+						},
+						{
+							name: 'JORDAN_PETERSON',
+							file: staticFile('srt/JOE_ROGAN-5.srt'),
+						},
+						{
+							name: 'JOE_ROGAN',
+							file: staticFile('srt/JOE_ROGAN-6.srt'),
+						},
+						{
+							name: 'JORDAN_PETERSON',
+							file: staticFile('srt/JORDAN_PETERSON-7.srt'),
+						},
+					],
+					agent_details: {
+						JOE_ROGAN: {
+							color: '#bc462b',
+							image: 'JOE_ROGAN.png',
+						},
+						JORDAN_PETERSON: {
+							color: '#ffffff',
+							image: 'JORDAN_PETERSON.png',
+						},
+					},
 					onlyDisplayCurrentSentence: true,
 					subtitlesTextColor: 'rgba(255, 255, 255, 0.93)',
-					subtitlesLinePerPage: 5,
+					subtitlesLinePerPage: 4,
 					subtitlesZoomMeasurerSize: 10,
 					subtitlesLineHeight: 128,
 
 					// Wave settings
-					waveColor: '#a3a5ae',
 					waveFreqRangeStartIndex: 7,
 					waveLinesToDisplay: 15,
 					waveNumberOfSamples: '256', // This is string for Remotion controls and will be converted to a number

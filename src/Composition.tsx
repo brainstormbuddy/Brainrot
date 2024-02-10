@@ -1,5 +1,5 @@
 import { useAudioData, visualizeAudio } from '@remotion/media-utils';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
 	AbsoluteFill,
 	Audio,
@@ -14,36 +14,90 @@ import {
 	Video,
 } from 'remotion';
 
-export const fps = 30;
-
 import { PaginatedSubtitles } from './Subtitles';
 import { z } from 'zod';
 import { zColor } from '@remotion/zod-types';
 
+export const fps = 30;
+
+type SubtitleEntry = {
+	index: string;
+	startTime: number;
+	endTime: number;
+	text: string;
+	srt: string;
+};
+
+const AgentDetailsSchema = z.record(
+	z.object({
+		color: zColor(),
+		image: z.string().refine((s) => s.endsWith('.png'), {
+			message: 'Agent image must be a .png file',
+		}),
+	})
+);
+
+const srtTimeToSeconds = (srtTime: string) => {
+	const [hours, minutes, secondsAndMillis] = srtTime.split(':');
+	const [seconds, milliseconds] = secondsAndMillis.split(',');
+	return (
+		Number(hours) * 3600 +
+		Number(minutes) * 60 +
+		Number(seconds) +
+		Number(milliseconds) / 1000
+	);
+};
+
+const parseSRT = (srtContent: string): SubtitleEntry[] => {
+	// Split content into subtitle blocks
+	const blocks = srtContent.split('\n\n');
+
+	// Extract timestamps and text from each block
+	return blocks
+		.map((block) => {
+			const lines = block.split('\n');
+			const indexLine = lines[0];
+			const timeLine = lines[1];
+
+			if (!indexLine || !timeLine || lines.length < 3) {
+				return null;
+			}
+
+			const [startTime, endTime] = timeLine
+				.split(' --> ')
+				.map(srtTimeToSeconds);
+
+			// Combine all text lines into one text block
+			const textLines = lines.slice(2).join(' ');
+
+			return {
+				index: indexLine,
+				startTime,
+				endTime,
+				text: textLines,
+				srt: srtContent,
+			};
+		})
+		.filter((entry): entry is SubtitleEntry => entry !== null); // Remove null entries
+};
+
+const SubtitleFileSchema = z.object({
+	name: z.string(),
+	file: z.string().refine((s) => s.endsWith('.srt'), {
+		message: 'Subtitle file must be a .srt file',
+	}),
+});
+
 export const AudioGramSchema = z.object({
+	agent_details: AgentDetailsSchema,
 	durationInSeconds: z.number().positive(),
 	audioOffsetInSeconds: z.number().min(0),
-	subtitlesFileName: z.string().refine((s) => s.endsWith('.srt'), {
-		message: 'Subtitles file must be a .srt file',
-	}),
+	subtitlesFileName: z.array(SubtitleFileSchema),
 	audioFileName: z.string().refine((s) => s.endsWith('.mp3'), {
 		message: 'Audio file must be a .mp3 file',
 	}),
-	coverImgFileName: z
-		.string()
-		.refine(
-			(s) =>
-				s.endsWith('.jpg') ||
-				s.endsWith('.jpeg') ||
-				s.endsWith('.png') ||
-				s.endsWith('.bmp'),
-			{
-				message: 'Image file must be a .jpg / .jpeg / .png / .bmp file',
-			}
-		),
 	titleText: z.string(),
 	titleColor: zColor(),
-	waveColor: zColor(),
 	subtitlesTextColor: zColor(),
 	subtitlesLinePerPage: z.number().int().min(0),
 	subtitlesLineHeight: z.number().int().min(0),
@@ -58,15 +112,15 @@ export const AudioGramSchema = z.object({
 type AudiogramCompositionSchemaType = z.infer<typeof AudioGramSchema>;
 
 const AudioViz: React.FC<{
-	waveColor: string;
 	numberOfSamples: number;
 	freqRangeStartIndex: number;
+	waveColor: string;
 	waveLinesToDisplay: number;
 	mirrorWave: boolean;
 	audioSrc: string;
 }> = ({
-	waveColor,
 	numberOfSamples,
+	waveColor,
 	freqRangeStartIndex,
 	waveLinesToDisplay,
 	mirrorWave,
@@ -101,13 +155,14 @@ const AudioViz: React.FC<{
 		: frequencyDataSubset;
 
 	return (
-		<div className="audio-viz">
+		<div className="audio-viz z-30">
 			{frequencesToDisplay.map((v, i) => {
 				return (
 					<div
 						key={i}
-						className="bar bg-[#bc462b]"
+						className={`z-30 bar `}
 						style={{
+							backgroundColor: waveColor,
 							minWidth: '1px',
 							height: `${500 * Math.sqrt(v)}%`,
 						}}
@@ -121,9 +176,7 @@ const AudioViz: React.FC<{
 export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 	subtitlesFileName,
 	audioFileName,
-	coverImgFileName,
 	subtitlesLinePerPage,
-	waveColor,
 	waveNumberOfSamples,
 	waveFreqRangeStartIndex,
 	waveLinesToDisplay,
@@ -133,54 +186,119 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 	mirrorWave,
 	audioOffsetInSeconds,
 }) => {
-	const { durationInFrames } = useVideoConfig();
+	const [currentAgentName, setCurrentAgentName] = useState<string>('');
 
-	const [handle] = useState(() => delayRender());
-	const [subtitles, setSubtitles] = useState<string | null>(null);
+	const brainrotVideo = useMemo(
+		() => staticFile(`brainrot-${Math.round(random(null) * 7)}.mp4`),
+		[]
+	);
+	const { durationInFrames, fps } = useVideoConfig();
+	const frame = useCurrentFrame();
+	const [subtitlesData, setSubtitlesData] = useState<SubtitleEntry[]>([]);
+	const [currentSubtitle, setCurrentSubtitle] = useState<SubtitleEntry | null>(
+		null
+	);
+	const [handle, setHandle] = useState<number | null>(null);
 	const ref = useRef<HTMLDivElement>(null);
+	const [currentSrtContent, setCurrentSrtContent] = useState<string>('');
 
 	useEffect(() => {
-		fetch(subtitlesFileName)
-			.then((res) => res.text())
-			.then((text) => {
-				setSubtitles(text);
-				continueRender(handle);
-			})
-			.catch((err) => {
-				console.log('Error fetching subtitles', err);
-			});
-	}, [handle, subtitlesFileName]);
+		if (subtitlesData.length > 0) {
+			const currentTime = frame / fps;
+			const currentSubtitleIndex = subtitlesData.findIndex(
+				(subtitle) =>
+					currentTime >= subtitle.startTime && currentTime < subtitle.endTime
+			);
+			if (currentSubtitleIndex !== -1) {
+				const currentSubtitle = subtitlesData[currentSubtitleIndex];
+				setCurrentSubtitle(currentSubtitle);
 
-	if (!subtitles) {
-		return null;
-	}
+				// Use the index to find the corresponding agent name
+				const { name } = subtitlesFileName[currentSubtitleIndex] || {};
+				setCurrentAgentName(name);
+			}
+		}
+	}, [frame, fps, subtitlesData, subtitlesFileName]);
+
+	console.log('Current agent name:', currentAgentName);
+
+	// Fetch and parse all SRT files
+	useEffect(() => {
+		const fetchSubtitlesData = async () => {
+			const handleId = delayRender();
+			setHandle(handleId);
+
+			try {
+				const data = await Promise.all(
+					subtitlesFileName.map(async ({ file }) => {
+						// Destructure to get the file
+						const response = await fetch(file);
+						const text = await response.text();
+						return parseSRT(text);
+					})
+				);
+				setSubtitlesData(data.flat().sort((a, b) => a.startTime - b.startTime));
+			} catch (error) {
+				console.error('Error fetching subtitles:', error);
+			} finally {
+				continueRender(handleId);
+			}
+		};
+
+		fetchSubtitlesData();
+	}, [subtitlesFileName]);
+
+	// Determine the current subtitle based on the frame
+	useEffect(() => {
+		if (subtitlesData.length > 0) {
+			const currentTime = frame / fps;
+			const current = subtitlesData.find(
+				(subtitle) =>
+					currentTime >= subtitle.startTime && currentTime < subtitle.endTime
+			);
+			setCurrentSubtitle(current || null);
+		}
+	}, [frame, fps, subtitlesData]);
+
+	// Ensure that the delayRender handle is cleared when the component unmounts
+	useEffect(() => {
+		return () => {
+			if (handle !== null) {
+				continueRender(handle);
+			}
+		};
+	}, [handle]);
+
+	useEffect(() => {
+		if (currentSubtitle) {
+			setCurrentSrtContent(currentSubtitle.srt);
+		}
+	}, [currentSubtitle]);
 
 	const audioOffsetInFrames = Math.round(audioOffsetInSeconds * fps);
-
-	const brainrotVideo = staticFile(
-		`brainrot-${Math.round(random(null) * 7)}.mp4`
-	);
 
 	return (
 		<div ref={ref}>
 			<AbsoluteFill>
 				<Sequence from={-audioOffsetInFrames}>
 					<Audio src={audioFileName} />
-					<div
-						className="relative -z-20 flex flex-col w-full h-full font-remotionFont"
-						style={{
-							fontFamily: 'IBM Plex Sans',
-						}}
-					>
+					<div className="relative -z-20 flex flex-col w-full h-full font-remotionFont">
 						<div className="w-full h-[50%]">
 							<div className="flex flex-row gap-24 items-end h-full p-8">
-								<Img src={coverImgFileName} />
+								<Img
+									width={200}
+									height={200}
+									className="rounded-full"
+									src={`https://images.smart.wtf/${currentAgentName}.png`}
+								/>
 
 								<div>
 									<AudioViz
 										audioSrc={audioFileName}
 										mirrorWave={mirrorWave}
-										waveColor={waveColor}
+										waveColor={
+											currentAgentName === 'JOE_ROGAN' ? '#bc462b' : '#0000FF'
+										}
 										numberOfSamples={Number(waveNumberOfSamples)}
 										freqRangeStartIndex={waveFreqRangeStartIndex}
 										waveLinesToDisplay={waveLinesToDisplay}
@@ -199,10 +317,10 @@ export const AudiogramComposition: React.FC<AudiogramCompositionSchemaType> = ({
 									lineHeight: `${subtitlesLineHeight}px`,
 									WebkitTextStroke: '4px black',
 								}}
-								className="font-remotionFont z-2 absolute text-7xl text-white mx-24 top-24 left-0"
+								className="font-remotionFont z-10 absolute text-6xl text-white mx-24 top-8 left-0"
 							>
 								<PaginatedSubtitles
-									subtitles={subtitles.toUpperCase()}
+									subtitles={currentSrtContent}
 									startFrame={audioOffsetInFrames}
 									endFrame={audioOffsetInFrames + durationInFrames}
 									linesPerPage={subtitlesLinePerPage}

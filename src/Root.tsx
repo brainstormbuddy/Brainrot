@@ -1,8 +1,24 @@
 import { Composition, staticFile } from 'remotion';
 import { AudioGramSchema, AudiogramComposition, fps } from './Composition';
 import './style.css';
+import { getAudioDuration } from '@remotion/media-utils';
+import { useEffect, useState } from 'react';
 
 export const RemotionRoot: React.FC = () => {
+	const [audioDuration, setAudioDuration] = useState<number | null>(null);
+
+	useEffect(() => {
+		const loadAudio = async () => {
+			const duration = await getAudioDuration(staticFile('audio.mp3'));
+			setAudioDuration(Math.round(duration));
+		};
+
+		loadAudio();
+	}, []);
+
+	if (audioDuration === null) {
+		return <div>Loading...</div>; // Or some loading animation
+	}
 	return (
 		<>
 			<Composition
@@ -36,15 +52,15 @@ export const RemotionRoot: React.FC = () => {
 						},
 						{
 							name: 'JORDAN_PETERSON',
-							file: staticFile('srt/JOE_ROGAN-3.srt'),
+							file: staticFile('srt/JORDAN_PETERSON-3.srt'),
 						},
 						{
 							name: 'JOE_ROGAN',
-							file: staticFile('srt/JORDAN_PETERSON-4.srt'),
+							file: staticFile('srt/JOE_ROGAN-4.srt'),
 						},
 						{
 							name: 'JORDAN_PETERSON',
-							file: staticFile('srt/JOE_ROGAN-5.srt'),
+							file: staticFile('srt/JORDAN_PETERSON-5.srt'),
 						},
 						{
 							name: 'JOE_ROGAN',
@@ -67,7 +83,7 @@ export const RemotionRoot: React.FC = () => {
 					},
 					onlyDisplayCurrentSentence: true,
 					subtitlesTextColor: 'rgba(255, 255, 255, 0.93)',
-					subtitlesLinePerPage: 4,
+					subtitlesLinePerPage: 6,
 					subtitlesZoomMeasurerSize: 10,
 					subtitlesLineHeight: 128,
 
@@ -76,7 +92,7 @@ export const RemotionRoot: React.FC = () => {
 					waveLinesToDisplay: 15,
 					waveNumberOfSamples: '256', // This is string for Remotion controls and will be converted to a number
 					mirrorWave: true,
-					durationInSeconds: 60,
+					durationInSeconds: audioDuration,
 				}}
 				// Determine the length of the video based on the duration of the audio file
 				calculateMetadata={({ props }) => {

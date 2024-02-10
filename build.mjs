@@ -1,5 +1,7 @@
 import transcribeFunction from './transcribe.mjs';
 import { exec } from 'child_process';
+import { rm, mkdir, unlink } from 'fs/promises';
+import path from 'path';
 
 const topics = [
 	'The ethics of AI in autonomous vehicles',
@@ -534,13 +536,7 @@ const topics = [
 	'The potential of 5G technology to revolutionize communication and IoT',
 ];
 
-const agents = [
-	'BARACK_OBAMA',
-	'BEN_SHAPIRO',
-	'JORDAN_PETERSON',
-	'JOE_ROGAN',
-	'RICK_SANCHEZ',
-];
+const agents = ['BARACK_OBAMA', 'BEN_SHAPIRO', 'JORDAN_PETERSON', 'JOE_ROGAN'];
 
 async function main() {
 	const randomTopic = topics[Math.floor(Math.random() * topics.length)];
@@ -566,18 +562,16 @@ async function main() {
 		console.error(`stderr: ${stderr}`);
 
 		try {
-			await rm(path.join('', 'public', 'srt'), {
-				recursive: true,
-				force: true,
-			});
-			await rm(path.join('', 'public', 'srt'), { recursive: true });
-			await unlink(path.join('', 'public', 'audio.mp3'));
-			await rm(path.join('', 'public', 'voice'), {
-				recursive: true,
-				force: true,
-			});
-			await rm(path.join('', 'public', 'voice'), { recursive: true });
-			await unlink(path.join('', 'src', 'tmp', 'context.tsx'));
+			await rm(path.join('public', 'srt'), { recursive: true, force: true });
+			await rm(path.join('public', 'voice'), { recursive: true, force: true });
+			await unlink(path.join('public', 'audio.mp3')).catch((e) =>
+				console.error(e)
+			);
+			await unlink(path.join('src', 'tmp', 'context.tsx')).catch((e) =>
+				console.error(e)
+			);
+			await mkdir(path.join('public', 'srt'), { recursive: true });
+			await mkdir(path.join('public', 'voice'), { recursive: true });
 		} catch (err) {
 			console.error(`Error removing files: ${err}`);
 		}

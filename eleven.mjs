@@ -5,9 +5,8 @@ import transcriptFunction from './transcript.mjs';
 dotenv.config();
 
 export async function generateTranscriptAudio() {
-	const transcript = (
-		await transcriptFunction('partial differential equations')
-	).transcript;
+	const transcript = (await transcriptFunction('Matrix Multiplication'))
+		.transcript;
 
 	const audios = [];
 

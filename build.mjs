@@ -593,7 +593,6 @@ async function cleanupResources() {
 		await unlink(path.join('src', 'tmp', 'context.tsx')).catch((e) =>
 			console.error(e)
 		);
-		await unlink(path.join('out', 'video.mp4')).catch((e) => console.error(e));
 		await mkdir(path.join('public', 'srt'), { recursive: true });
 		await mkdir(path.join('public', 'voice'), { recursive: true });
 	} catch (err) {
@@ -609,14 +608,36 @@ async function mainFn(topic, agentA, agentB, videoId, userId) {
 
 	console.log('Building project with npm...');
 	try {
-		const { stdout, stderr } = await execP('npm run build');
+		const { stdout, stderr } = await execP(
+			'npx remotion lambda sites create src/index.ts --site-name=brainrot'
+		);
 		console.log(`stdout: ${stdout}`);
 		if (stderr) console.error(`stderr: ${stderr}`);
 		console.log(`stdout: ${stdout}`);
 		if (stderr) console.error(`stderr: ${stderr}`);
 
-		const s3Url = await uploadFileToS3(videoPath, bucketName);
-		console.log(`Video URL: ${s3Url}`);
+		const regexServeUrl =
+			/https:\/\/[\w-]+\.s3\.us-east-1\.amazonaws\.com\/sites\/[\w-]+\/index\.html/;
+
+		const matchServeUrl = stdout.match(regexServeUrl);
+
+		console.log('Serve URL: ' + matchServeUrl);
+
+		const { stdout: stdoutRender, stderr: stderrRender } = await execP(
+			'npx remotion lambda render https://remotionlambda-useast1-oaz2rkh49x.s3.us-east-1.amazonaws.com/sites/brainrot/index.html Video'
+		);
+
+		const regex =
+			/https:\/\/s3\.us-east-1\.amazonaws\.com\/[\w-]+\/renders\/[\w-]+\/out\.mp4/;
+		const match = stdoutRender.match(regex);
+
+		let s3Url = '';
+		if (match) {
+			s3Url = match[0];
+			console.log(s3Url);
+		} else {
+			throw new Error('No S3 URL found in the output');
+		}
 
 		await cleanupResources();
 
@@ -629,6 +650,7 @@ async function mainFn(topic, agentA, agentB, videoId, userId) {
 	} catch (error) {
 		console.error(`exec error: ${error}`);
 		await cleanupResources();
+		await query('DELETE FROM `pending-videos` WHERE video_id = ?', [videoId]);
 	}
 }
 
@@ -657,6 +679,9 @@ async function pollPendingVideos() {
 			} catch (error) {
 				console.error('Error processing video:', error);
 				await cleanupResources();
+				await query('DELETE FROM `pending-videos` WHERE video_id = ?', [
+					video.video_id,
+				]);
 			}
 		} else {
 			console.log('No pending videos found, sleeping for 15 seconds...');

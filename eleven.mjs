@@ -43,9 +43,9 @@ export async function generateTranscriptAudio(topic, agentA, agentB) {
 import { staticFile } from 'remotion';
 
 export const initialAgentName = '${initialAgentName}';
-export const videoFileName = staticFile('brainrot-' + ${Math.floor(
+export const videoFileName = 'https://images.smart.wtf/brainrot-' + ${Math.floor(
 		Math.random() * 23
-	)} + '.mp4');
+	)} + '.mp4';
 export const subtitlesFileName = [
   ${audios
 		.map(

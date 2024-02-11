@@ -1,7 +1,7 @@
 {
-	"name": "brainrotjs",
+	"name": "remotion-template",
 	"version": "1.0.0",
-	"description": "ruin ytour brain",
+	"description": "My Remotion video",
 	"scripts": {
 		"start": "remotion studio",
 		"build": "remotion render Video out/video.mp4",
@@ -11,12 +11,14 @@
 	"repository": {},
 	"license": "UNLICENSED",
 	"dependencies": {
+		"@aws-sdk/client-sqs": "^3.511.0",
 		"@remotion/cli": "^4.0.4",
 		"@remotion/media-utils": "^4.0.4",
 		"@remotion/zod-types": "^4.0.4",
 		"@types/fluent-ffmpeg": "^2.1.24",
 		"audioconcat": "^0.1.4",
 		"fluent-ffmpeg": "^2.1.2",
+		"mysql2": "^3.9.1",
 		"openai": "^4.26.0",
 		"parse-srt": "1.0.0-alpha",
 		"react": "^18.0.0",

@@ -6,6 +6,7 @@ import path from 'path';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
+import { query } from './dbClient.mjs';
 
 const topics = [
 	'The ethics of AI in autonomous vehicles',
@@ -579,23 +580,12 @@ async function uploadFileToS3(filePath, bucketName) {
 	}
 }
 
-async function main() {
+async function mainFn(topic, agentA, agentB, videoId) {
 	const bucketName = 'smartimagebucket';
 	const videoPath = path.join('out', 'video.mp4');
-	const randomTopic = topics[Math.floor(Math.random() * topics.length)];
-	let agentAIndex = Math.floor(Math.random() * agents.length);
-	let agentBIndex;
 
-	do {
-		agentBIndex = Math.floor(Math.random() * agents.length);
-	} while (agentAIndex === agentBIndex);
+	await transcribeFunction(topic, agentA, agentB);
 
-	const agentA = agents[agentAIndex];
-	const agentB = agents[agentBIndex];
-
-	await transcribeFunction(randomTopic, agentA, agentB);
-
-	// run in the command line `npm run build`
 	console.log('Building project with npm...');
 	exec('npm run build', async (error, stdout, stderr) => {
 		if (error) {
@@ -625,9 +615,52 @@ async function main() {
 		} catch (err) {
 			console.error(`Error removing files: ${err}`);
 		}
+
+		await dbClient.query('DELETE FROM `pending-videos` WHERE video_id = ?', [
+			videoId,
+		]);
+
+		await dbClient.query(
+			`INSERT INTO videos (user_id, agent1, agent2, title, url, video_id) VALUES (?, ?, ?, ?, ?, ?)`,
+			[userId, agentA, agentB, topic, s3Url, videoId]
+		);
 	});
 }
 
+function sleep(ms) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function pollPendingVideos() {
+	while (true) {
+		const rows = await query(
+			'SELECT * FROM `pending-videos` ORDER BY timestamp ASC LIMIT 1',
+			[]
+		);
+
+		if (rows.length > 0) {
+			console.log('Found pending video:', rows[0]);
+			const video = rows[0];
+			await mainFn(
+				video.title,
+				video.agent1,
+				video.agent2,
+				video.video_id,
+				video.user_id
+			);
+		} else {
+			console.log('No pending videos found, sleeping for 15 seconds...');
+			await sleep(15000);
+		}
+		await sleep(15000);
+	}
+}
+
 (async () => {
-	await main();
+	try {
+		console.log('Starting to poll for pending videos...');
+		await pollPendingVideos();
+	} catch (error) {
+		console.error('Error polling for pending videos:', error);
+	}
 })();

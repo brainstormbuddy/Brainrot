@@ -2,7 +2,11 @@ import { Composition, staticFile } from 'remotion';
 import { AudioGramSchema, AudiogramComposition, fps } from './Composition';
 import './style.css';
 import { useEffect, useState } from 'react';
-import { initialAgentName, subtitlesFileName } from './tmp/context';
+import {
+	initialAgentName,
+	subtitlesFileName,
+	videoFileName,
+} from './tmp/context';
 import { getAudioDuration } from '@remotion/media-utils';
 
 export const RemotionRoot: React.FC = () => {
@@ -38,6 +42,7 @@ export const RemotionRoot: React.FC = () => {
 
 					// Subtitles settings
 					subtitlesFileName,
+					videoFileName,
 					agentDetails: {
 						JOE_ROGAN: {
 							color: '#bc462b',

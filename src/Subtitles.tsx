@@ -1,12 +1,6 @@
 import parseSRT, { SubtitleItem } from 'parse-srt';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-	cancelRender,
-	continueRender,
-	delayRender,
-	useCurrentFrame,
-	useVideoConfig,
-} from 'remotion';
+import { useCurrentFrame, useVideoConfig } from 'remotion';
 import { Word } from './Word';
 
 const useWindowedFrameSubs = (

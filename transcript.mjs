@@ -20,7 +20,7 @@ export default async function transcriptFunction(topic, agentA, agentB) {
 				)} should engage with the topic with a sense of curiosity and a desire for practical understanding, while ${agentB.replace(
 					'_',
 					' '
-				)} offers a deep, analytical perspective. The dialogue should be engaging and include light humor, yet still provide meaningful insights into ${topic}. Limit the dialogue to a maximum of 8 back-and-forth exchanges, aiming for a concise transcript that would last between 45-55 seconds. The person attribute should either be ${agentA} or ${agentB}. The line attribute should be a that character's line of dialogue. I also need an asset description under the asset attribute which would be a relevant search query to find an image which should be relevant to the overall topic of the conversation. The asset descriptions shouldn't be vague, but a description of something that you think would be a good image to go along with the conversation. Specificity is key.`,
+				)} offers a deep, analytical perspective. The dialogue should be engaging and include light humor, yet still provide meaningful insights into ${topic}. Limit the dialogue to a maximum of 7 exchanges, aiming for a concise transcript that would last between 45-50 seconds. The person attribute should either be ${agentA} or ${agentB}. The line attribute should be a that character's line of dialogue. I also need an asset description under the asset attribute which would be a relevant search query to find an image which should be relevant to the overall topic of the conversation. The asset descriptions shouldn't be vague, but a description of something that you think would be a good image to go along with the conversation. Specificity is key.`,
 			},
 		],
 		functions: [

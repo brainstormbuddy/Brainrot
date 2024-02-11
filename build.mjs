@@ -1,5 +1,4 @@
 import transcribeFunction from './transcribe.mjs';
-import { exec } from 'child_process';
 import { rm, mkdir, unlink } from 'fs/promises';
 import fs from 'fs';
 import path from 'path';
@@ -7,6 +6,10 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
 import { query } from './dbClient.mjs';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execP = promisify(exec);
 
 const topics = [
 	'The ethics of AI in autonomous vehicles',
@@ -580,51 +583,53 @@ async function uploadFileToS3(filePath, bucketName) {
 	}
 }
 
-async function mainFn(topic, agentA, agentB, videoId) {
+async function cleanupResources() {
+	try {
+		await rm(path.join('public', 'srt'), { recursive: true, force: true });
+		await rm(path.join('public', 'voice'), { recursive: true, force: true });
+		await unlink(path.join('public', 'audio.mp3')).catch((e) =>
+			console.error(e)
+		);
+		await unlink(path.join('src', 'tmp', 'context.tsx')).catch((e) =>
+			console.error(e)
+		);
+		await unlink(path.join('out', 'video.mp4')).catch((e) => console.error(e));
+		await mkdir(path.join('public', 'srt'), { recursive: true });
+		await mkdir(path.join('public', 'voice'), { recursive: true });
+	} catch (err) {
+		console.error(`Error during cleanup: ${err}`);
+	}
+}
+
+async function mainFn(topic, agentA, agentB, videoId, userId) {
 	const bucketName = 'smartimagebucket';
 	const videoPath = path.join('out', 'video.mp4');
 
 	await transcribeFunction(topic, agentA, agentB);
 
 	console.log('Building project with npm...');
-	exec('npm run build', async (error, stdout, stderr) => {
-		if (error) {
-			console.error(`exec error: ${error}`);
-			return;
-		}
+	try {
+		const { stdout, stderr } = await execP('npm run build');
 		console.log(`stdout: ${stdout}`);
-		console.error(`stderr: ${stderr}`);
+		if (stderr) console.error(`stderr: ${stderr}`);
+		console.log(`stdout: ${stdout}`);
+		if (stderr) console.error(`stderr: ${stderr}`);
 
 		const s3Url = await uploadFileToS3(videoPath, bucketName);
 		console.log(`Video URL: ${s3Url}`);
 
-		try {
-			await rm(path.join('public', 'srt'), { recursive: true, force: true });
-			await rm(path.join('public', 'voice'), { recursive: true, force: true });
-			await unlink(path.join('public', 'audio.mp3')).catch((e) =>
-				console.error(e)
-			);
-			await unlink(path.join('src', 'tmp', 'context.tsx')).catch((e) =>
-				console.error(e)
-			);
-			await unlink(path.join('out', 'video.mp4')).catch((e) =>
-				console.error(e)
-			);
-			await mkdir(path.join('public', 'srt'), { recursive: true });
-			await mkdir(path.join('public', 'voice'), { recursive: true });
-		} catch (err) {
-			console.error(`Error removing files: ${err}`);
-		}
+		await cleanupResources();
 
-		await dbClient.query('DELETE FROM `pending-videos` WHERE video_id = ?', [
-			videoId,
-		]);
+		await query('DELETE FROM `pending-videos` WHERE video_id = ?', [videoId]);
 
-		await dbClient.query(
+		await query(
 			`INSERT INTO videos (user_id, agent1, agent2, title, url, video_id) VALUES (?, ?, ?, ?, ?, ?)`,
 			[userId, agentA, agentB, topic, s3Url, videoId]
 		);
-	});
+	} catch (error) {
+		console.error(`exec error: ${error}`);
+		await cleanupResources();
+	}
 }
 
 function sleep(ms) {
@@ -641,13 +646,18 @@ async function pollPendingVideos() {
 		if (rows.length > 0) {
 			console.log('Found pending video:', rows[0]);
 			const video = rows[0];
-			await mainFn(
-				video.title,
-				video.agent1,
-				video.agent2,
-				video.video_id,
-				video.user_id
-			);
+			try {
+				await mainFn(
+					video.title,
+					video.agent1,
+					video.agent2,
+					video.video_id,
+					video.user_id
+				);
+			} catch (error) {
+				console.error('Error processing video:', error);
+				await cleanupResources();
+			}
 		} else {
 			console.log('No pending videos found, sleeping for 15 seconds...');
 			await sleep(15000);

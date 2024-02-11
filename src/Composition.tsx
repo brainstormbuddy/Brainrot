@@ -15,7 +15,7 @@ import { PaginatedSubtitles } from './Subtitles';
 import { z } from 'zod';
 import { zColor } from '@remotion/zod-types';
 
-export const fps = 30;
+export const fps = 20;
 
 type SubtitleEntry = {
 	index: string;

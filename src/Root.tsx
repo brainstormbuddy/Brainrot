@@ -27,8 +27,8 @@ export const RemotionRoot: React.FC = () => {
 				id="Video"
 				component={AudiogramComposition}
 				fps={fps}
-				width={1080}
-				height={1920}
+				width={756}
+				height={1344}
 				schema={AudioGramSchema}
 				defaultProps={{
 					// Audio settings

@@ -1,5 +1,3 @@
-By Noah Solomon
-
 The purpose of this project, [brainrot.js](https://brainrotjs.com) was to provide a seamless way to generate a short form video on any topic from multiple interesting personalities to extend my pursuit of making education more fun, intuitive, and absurd. 
 
 We used various tools from the front to backend:
